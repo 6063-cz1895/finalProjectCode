@@ -1,4 +1,4 @@
-# HW12
+# FinalProject
 
 This code is part of the code of the final project which is a game.
 
