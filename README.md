@@ -24,9 +24,9 @@ This week, I completed the main framework and functionalities of the game. The c
 The main body of my game is essentially complete. The next step is to further enhance the game's UI. For instance, adding custom buttons, replacing the red balls representing mosquitoes and the blue balls representing the player with images or animations, and modifying the start and retry pages, etc. I might also need to adjust the game parameters to make the difficulty more appropriate.
 
 The controller I 3D printed
-![controller](./DIYController.jpg)
+![controller](./DIYController.JPG)
 The view of bread board
-![bread board](./breadBoard.jpg)
+![bread board](./breadBoard.JPG)
 The logic of cat's display
 ![cat states](./catStates.jpg)
 
