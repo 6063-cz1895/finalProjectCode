@@ -11,8 +11,8 @@ let joyStickY = 0;  // Y-axis value from the joystick
 const JOYSTICK_DEADZONE = 300;  // Deadzone range
 const JOYSTICK_MID_X = 1960;  // Midpoint X
 const JOYSTICK_MID_Y = 1948;  // Midpoint Y
-// Variables for the cat display
-let catB, catF, catM, catN;  // Cat png&gif
+// Variables for the cat display and other visual elements
+let catB, catF, catM, catN, catSelect, mosLeft, mosRight, fyj, catNS, catMS, catBS, catFS, catSelectS, startBg, gameBg;  // png&gif
 let catState = 'normal'; // States normal
 let catMFrameCount = 0; // Frame counter for catM GIF
 // Variables for sunBar
@@ -21,27 +21,40 @@ let sunBarDecreaseSpeed = 1;  // Speed of decrease
 let sunBarIncreaseSpeed = 3 * sunBarDecreaseSpeed;  // Speed of increase
 // Variables for healthBar
 let healthBarLength = 300;  // Initial length of the healthBar
-let healthBarDecreaseSpeed = 0.5;  // Speed of decrease in length caused by sunBar
+let healthBarDecreaseSpeed = 0.5;  // Speed of decrease in length
 // Variables for controlling the ball
 let ballX, ballY;  // Position of the ball
 let ballSize = 20;
-let ballSpeed = 5;  // Movement speed of the ball
+let ballSpeed = 7;  // Movement speed of the ball
 // Game states
 let gameStarted = false;  // If the game has started
 let tryAgain = false;  // If the "Try Again" message should show
 let startButton;  // Button to start the game
 // The mosquitoes array
 let mosquitoes = [];
-let numMosquito = 1; //set number to 1 for now
-
+let numMosquito;
+// Other gaming UI
+let changeButton; // Button to change the cat
+let currentCat = 'catX'; // Variable to keep track of the current cat
+let sleepingTime = 0; // Time in seconds
 
 // Function to preload images (GIFs are load in setup using DOM)
 function preload() {
   catB = loadImage('catB.png');
   catF = loadImage('catF.png');
+  catBS = loadImage('catBS.png');
+  catFS = loadImage('catFS.png');
+  cuteFont = loadFont('cute.ttf');
+  catSelect = loadImage('catSelect.png');
+  catSelectS = loadImage('catSelectS.png');
+  mosLeft = loadImage('mosLeft.png');
+  mosRight = loadImage('mosRight.png');
+  fyj = loadImage('fyj.png');
+  startBg = loadImage('start.jpg');
+  gameBg = loadImage('bg.jpg');
 }
 
-// Function to add mosquito (currently a red ball)
+// Function to add mosquitos
 function addMosquito() {
   let mosquito = {
     x: random(width), // Starting at a random position on x-axis from the top of the canvas
@@ -49,7 +62,6 @@ function addMosquito() {
     speedX: random(-5, 5), // Random initial speed
     speedY: random(-5, 5),
     size: 10          // Size of the mosquito circle
-    // this will be replaced by a png or even a GIF next week, it will change direction according to on the let or right side of the screen so the mosquito is facing the cat
   };
   mosquitoes.push(mosquito);
 }
@@ -97,44 +109,61 @@ function updateMosquitoes() {
       addMosquito();
   }
 }
-// Function to draw mosquitoes (this part will be edited to be png or gif)
+// Function to draw mosquitoes
 function drawMosquitoes() {
-    fill(255, 0, 0);
-    mosquitoes.forEach(m => {
-        ellipse(m.x, m.y, m.size, m.size);
-    });
+  mosquitoes.forEach(m => {
+    // Choose the left or right image based on the mosquito's x position
+    let mosquitoImage = m.x < width / 2 ? mosLeft : mosRight;
+    image(mosquitoImage, m.x, m.y, 150, 150);
+  });
+}
+// Function to update the number of mosquitoes based on sleeping time: less than 20 seconds, 1; 20-35 seconds, 2; more than 35, 3
+function updateMosquitoCount() {
+  if (sleepingTime < 20) {
+    numMosquito = 1;
+  } else if (sleepingTime >= 20 && sleepingTime < 35) {
+    numMosquito = 2;
+  } else if (sleepingTime >= 35) {
+    numMosquito = 3;
+  }
 }
 // Function to display the cat-related gif and png
 function drawCat() {
   imageMode(CENTER);
-  // Hide GIF images at first
+  // Hide all GIF images at first
   catM.hide();
   catN.hide();
-  // Set cases for switching displays (states) of the cat
+  catMS.hide();
+  catNS.hide();
+
+  let catToUse = currentCat === 'catX' ? { N: catN, M: catM, B: catB, F: catF } : { N: catNS, M: catMS, B: catBS, F: catFS };// the change cat function
+  //logic of cat states
   switch (catState) {
     case 'normal':
-      // The logic is this, all states beside the beingBit is normal case
-      if (sunBarLength === 300) {//sun bar full
-        image(catB, 800, 600, 391, 391); // Burn
-      } else if (sunBarLength === 0) {//sun bar empty
-        image(catF, 800, 600, 391, 391); // Frozen
+      if (sunBarLength === 300) {
+        image(catToUse.B, 800, 600, 391, 391); // Burn
+      } else if (sunBarLength === 0) {
+        image(catToUse.F, 800, 600, 391, 391); // Frozen
       } else {
-        catN.show(); // Normal state
-        catN.position(800 - 391 / 2, 600 - 391 / 2);
+        catToUse.N.show();
+        catToUse.N.position(800 - 391 / 2, 600 - 391 / 2); // Normal
       }
       break;
-
     case 'beingBit':
-      catM.show();//show the beingBit GIF
-      catM.position(800 - 391 / 2, 600 - 391 / 2);
+      catToUse.M.show();
+      catToUse.M.position(800 - 391 / 2, 600 - 391 / 2); // Mosquito-bited
       if (catMFrameCount < 180) {
         catMFrameCount++;
       } else {
-        catState = 'normal'; // Change back to normal state
-        catMFrameCount = 0; // Reset frame counter
+        catState = 'normal';
+        catMFrameCount = 0;
       }
       break;
   }
+}
+//logic for switching cats
+function changeCat() {
+  currentCat = currentCat === 'catX' ? 'catS' : 'catX';
 }
 // Function for serial data
 function receiveSerial() {
@@ -162,10 +191,37 @@ function connectToSerial() {
     connectButton.hide(); 
   }
 }
+//Button style (home page UI)
+function styleButton(button) {
+  // Apply style sheet
+  button.style('font-family', 'Cute');
+  button.style('background-color', '#FFF4E8'); // Background color
+  button.style('color', '#E3B899'); // Text color
+  button.style('border', '2px solid #FFF4E8'); // Border color
+  button.style('border-radius', '10px'); // Rounded corners
+  button.style('padding', '15px 30px'); // Padding
+  button.style('font-size', '20px'); // Font size
+  button.style('cursor', 'pointer'); // Cursor pointer
+
+  // mouse-hover intercation
+  button.mouseOver(() => {
+    button.style('background-color', '#E3B899'); // Hover background color
+    button.style('color', '#FFF4E8'); // Hover text color
+  });
+
+  button.mouseOut(() => {
+    button.style('background-color', '#FFF4E8'); // Revert to original background color
+    button.style('color', '#E3B899'); // Revert to original text color
+  });
+}
+// the "ball" is now an anti-mosquito poison
+function drawBall() {
+  image(fyj, ballX, ballY, 100, 100);
+}
 
 function setup() {
   createCanvas(1600, 900);  // Set canvas size
-
+  imageMode(CENTER);
   readyToReceive = false;  // Set initial state to not ready to receive data
 
   // Initialize ball position in center of canvas
@@ -176,68 +232,98 @@ function setup() {
 catM = createImg('catM.gif');
 catN = createImg('catN.gif');
 
+catMS = createImg('catMS.gif');
+catNS = createImg('catNS.gif');
+
 catM.hide();  // Initially hide GIFs
 catN.hide();
-
+catMS.hide();
+catNS.hide();
 
   // Setup serial communication
   mSerial = createSerial();
 
   // Create and position the 'Connect To Serial' button
   connectButton = createButton("Connect To Serial");
-  connectButton.position(10, 10);
+  connectButton.position(1240, 17); // Adjust position for connectButton
   connectButton.mousePressed(connectToSerial);
 
-  // Create and position the 'Start' button
+  // Create and position the buttons
   startButton = createButton('Start');
-  startButton.position(width / 2 - 30, height / 2 - 15);
-  startButton.mousePressed(startGame); 
+  startButton.position(1008, 248);
+  startButton.mousePressed(startGame);
+
+  changeButton = createButton('Change Cat');
+  changeButton.position(1008, 179);
+  changeButton.mousePressed(changeCat);
+  //Call fonts and button style
+  textFont(cuteFont);
+  styleButton(connectButton);
+  styleButton(startButton);
+  styleButton(changeButton);
 
   for (let i = 0; i < numMosquito; i++) {
     addMosquito();
+
+ // Initialize sleeping time
+  sleepingTime = 0;
 }
 }
 
 function draw() {
+  clear();
   if (!gameStarted) {
-    background(0);  // Set background to black when game is not started (will be updated next week with a gif or jpg)
+      imageMode(CORNER);
+      background(startBg);
+      imageMode(CENTER);
 
-    // Show "Try Again" message if the user lost the game
-    if (tryAgain) {
-      fill(255);
-      textSize(32);
+      // Display the catSelect PNG
+      let selectImage = currentCat === 'catX' ? catSelect : catSelectS;
+      image(selectImage, 803, 165, 216, 216);
+
+      // Display text on the restart screen
+      noStroke();
+      fill('#46675E');
+      textSize(40);
       textAlign(CENTER, CENTER);
-      text("Try Again", width / 2, height / 2);
-    }
-    return;  // If user lost, skip the rest of the draw function and restart the game
-  }
+      if (tryAgain) {
+          // Show sleeping time
+          text(`Sleeping Time: ${floor(sleepingTime)} S`, 1300, 35);
+      }
+  } else {
+      imageMode(CORNER);
+      background(gameBg);
+      imageMode(CENTER);
 
-  // Set background to white when game is started (will be updated next week with a png or gif)
-  background(255);
 
-  // Serial communication
-  if (mSerial.opened() && readyToReceive) {
-    readyToReceive = false;
-    mSerial.clear();
-    mSerial.write(0xab);
-  }
+      // Serial communication and other game logic
+      if (mSerial.opened() && readyToReceive) {
+          readyToReceive = false;
+          mSerial.clear();
+          mSerial.write(0xab);
+      }
 
-  // Read serial data
-  if (mSerial.availableBytes() > 0) {
-    receiveSerial();
-  }
+      if (mSerial.availableBytes() > 0) {
+          receiveSerial();
+      }
+      //Call all functions
+      updateMosquitoCount();
+      while (mosquitoes.length < numMosquito) {
+        addMosquito();}
+      updateMosquitoes();
+      drawMosquitoes();
+      drawCat();
+      updateBallPosition();
+      drawBall();
 
-  // Display sensor data on the screen (will be removed in the final version)
-  fill(0);
-  textSize(16);
-  text(`Photoreistor Value: ${a0Value}\nJoystick X: ${joyStickX}, Y: ${joyStickY}`, 10, 20);  // Display all sensor values from Arduuino
-//starts to call all the functions that we created
-  if (gameStarted) {
-    updateBallPosition();
-  }
-  updateMosquitoes();
-  drawMosquitoes();
-  drawCat();
+      // Update and display sleeping time during the game
+      noStroke();
+      fill('#46675E');
+      textSize(35);
+      textAlign(CENTER, TOP);
+      sleepingTime += deltaTime / 1000; // deltaTime (milliseconds)
+      text(`Sleeping Time: ${floor(sleepingTime)} S`, 750, 35);
+
   //Game UI
   // sunBar (not samba)
   if (sunBarLength < 300 && a0Value > 200) {
@@ -247,10 +333,10 @@ function draw() {
   }
   sunBarLength = constrain(sunBarLength, 0, 300);  // Ensure length stays within max value
   // Drawing sunBar
-  fill(sunBarLength >= 300 ? color(165, 42, 42) : color(0, 255, 0));  // Color is based on length
+  fill(sunBarLength >= 300 ? color(165, 42, 42) : color(0, 255, 0));  // Color based on length
   noStroke();
   rect(50, height - 80, sunBarLength, 20);
-  // Draw border for sunBar
+  // Border for sunBar
   stroke(0);
   noFill(); 
   rect(50, height - 80, 300, 20); 
@@ -272,7 +358,7 @@ function draw() {
   if (healthBarLength <= 0) {
     resetGame();
   }
-
+  
   // Function to update the ball's position
 function updateBallPosition() {
   let dx = joyStickX - JOYSTICK_MID_X;  // X-axis offset
@@ -282,34 +368,45 @@ function updateBallPosition() {
   if (distance > JOYSTICK_DEADZONE) {
     // Calculate the angle
     let angle = Math.atan2(dy, dx);
-    // Update the ball's position based on the angle and speed
+    // Update the ball's position from angle and speed
     ballX += ballSpeed * Math.cos(angle);
     ballY += ballSpeed * Math.sin(angle);
     // Ensure the ball stays within the canvas
     ballX = constrain(ballX, ballSize / 2, width - ballSize / 2);
     ballY = constrain(ballY, ballSize / 2, height - ballSize / 2);
   }
-}
-  // Draw the ball (Will be updated next week as a png or gif, if have time, change to different state after hitting mosquito)
-  fill(0, 0, 255);
-  noStroke();
-  ellipse(ballX, ballY, ballSize, ballSize);
-}
+}}}
+  // Draw the ball
+  //fill(0, 0, 255);
+  //noStroke();
+  //ellipse(ballX, ballY, ballSize, ballSize);
+
 // Start game status
 function startGame() {
   gameStarted = true;  // Set game state to started
-  tryAgain = false;  // Reset try again message
+  tryAgain = false;  // Reset try again(now final score) message
   sunBarLength = 300;  // Reset sunBar length
   healthBarLength = 300;  // Reset healthBar length
-  startButton.hide();  // Hide the start button
+  startButton.hide();  // Hide the buttons
+  changeButton.hide();
+
+  // Reset sleeping time and mosquito array
+  sleepingTime = 0;
+  mosquitoes = [];
+  updateMosquitoCount();
 }
-// Reset of the game statuus
+// Reset of the game status
 function resetGame() {
   gameStarted = false;  // Set game to not started
   tryAgain = true;  // Enable the try again
   sunBarLength = 300;  // Reset sunBar length
   healthBarLength = 300;  // Reset healthBar length
-  startButton.show();  // Show the start button for a round of new game
-  catM.hide();  // Initially hide GIFs
+  startButton.show();  // Show the button for a new game
+  changeButton.show();
+
+  // Hide cat GIFs
+  catM.hide();
   catN.hide();
+  catMS.hide();
+  catNS.hide();
 }
